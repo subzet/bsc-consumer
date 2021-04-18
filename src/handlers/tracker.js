@@ -104,6 +104,8 @@ const trackSwaps = async (tokenAddress) => {
                             `function ${transaction.callFunction.name}`,
                             "\x1b[0m"
                         );
+
+                        
                     }catch(error){
                         console.log(error.message)
                     }

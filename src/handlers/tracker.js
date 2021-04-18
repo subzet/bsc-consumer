@@ -1,10 +1,10 @@
 const Web3 = require('web3')
 const BEP20_ABI = require("../config/BEP20_ABI.json");
 const Router_ABI = require("../config/Router_ABI.json");
-const Token = require('../services/token')
-const Transaction = require('../services/transaction')
-
-const config = require('../config/config')
+const Token = require('../services/token');
+const Transaction = require('../services/transaction');
+const moment = require('moment');
+const config = require('../config/config');
 
 const web3 = new Web3(
     new Web3.providers.WebsocketProvider("wss://bsc-ws-node.nariox.org:443", {
@@ -45,10 +45,10 @@ const checkSwapTx = (fn) => {
     return config.get('allowedTrx').indexOf(fn) >= 0
   } 
 
-const getPairInvolved = (tokenAddressIndex,bnbAddressIndex,busdAddressIndex) => {               
-    if(tokenAddressIndex - bnbAddressIndex === 1 || bnbAddressIndex - tokenAddressIndex === 1)
+const getPairInvolved = (tokenAddressIndex,bnbAddressIndex,busdAddressIndex) => {
+    if(bnbAddressIndex >= 0 && (tokenAddressIndex - bnbAddressIndex === 1 || bnbAddressIndex - tokenAddressIndex === 1))
         return 'WBNB'
-    if(tokenAddressIndex - busdAddressIndex === 1 || busdAddressIndex - tokenAddressIndex === 1)
+    if(busdAddressIndex >= 0 && (tokenAddressIndex - busdAddressIndex === 1 || busdAddressIndex - tokenAddressIndex === 1))
         return 'BUSD'
 
     return undefined
@@ -77,9 +77,7 @@ const trackSwaps = async (tokenAddress) => {
             const tx = await web3.eth.getTransaction(event.transactionHash);
             
             if(tx.to && tx.to.toUpperCase() === routerContract._address.toUpperCase()){
-                console.log(`Router transaction`)
                 const receipt = await web3.eth.getTransactionReceipt(event.transactionHash);
-                
                 const transaction = new Transaction(tx,receipt)
             
                 if(!checkSwapTx(transaction.callFunction.name)){
@@ -99,11 +97,8 @@ const trackSwaps = async (tokenAddress) => {
                     return
                 }
 
-
                 //Consider a buy if our token desired is positioned after addresses we use as reference
                 const buy = bnbAddressIndex < tokenAddressIndex || busdAddressIndex < tokenAddressIndex
-
-                
 
                 //Print Transaction
                 const color = buy ? "\x1b[32m" : "\x1b[31m"
@@ -117,23 +112,25 @@ const trackSwaps = async (tokenAddress) => {
                 const tokenFrom = buy ? getTokenByAddress(config.get('addresses')[pair]) : getTokenByAddress(tokenAddress)
                 const tokenTo = buy ? getTokenByAddress(tokenAddress) : getTokenByAddress(config.get('addresses')[pair])
                 
-                    try{
-                        const tokenFromPrice = buy ? await tokenFrom.getPrice() : undefined
-                        const tokenToPrice = buy ? undefined : await tokenTo.getPrice()
+                try{
+                    const tokenFromPrice = buy ? await tokenFrom.getPrice() : undefined
+                    const tokenToPrice = buy ? undefined : await tokenTo.getPrice()
                         
-                        console.log(
-                            color,
-                            label, 
-                            buy ? amountTo : amountFrom,
-                            buy ? tokenTo.symbol : tokenFrom.symbol,
-                            "=>",
-                            buy ? amountFrom : amountTo,
-                            buy ? tokenFrom.symbol : tokenTo.symbol,
-                            `${buy ? tokenTo.symbol : tokenFrom.symbol} price:  ${buy ? (Number(amountFrom) * tokenFromPrice.value) / Number(amountTo)  : (Number(amountTo) * tokenToPrice.value) / Number(amountFrom) }`,
-                            `https://bscscan.com/tx/${transaction.transaction.hash}`,
-                            `function ${transaction.callFunction.name}`,
-                            "\x1b[0m"
-                        );
+                    console.log(
+                        color,
+                        `[${moment().format()}]`,
+                        label, 
+                        buy ? amountTo : amountFrom,
+                        buy ? tokenTo.symbol : tokenFrom.symbol,
+                        "=>",
+                        buy ? amountFrom : amountTo,
+                        buy ? tokenFrom.symbol : tokenTo.symbol,
+                        `($${buy ? tokenFromPrice.value.toFixed(2) : tokenToPrice.value.toFixed(2)})`,
+                        `${buy ? tokenTo.symbol : tokenFrom.symbol} price:  ${buy ? (Number(amountFrom) * tokenFromPrice.value) / Number(amountTo)  : (Number(amountTo) * tokenToPrice.value) / Number(amountFrom) }`,
+                        `https://bscscan.com/tx/${transaction.transaction.hash}`,
+                        `function ${transaction.callFunction.name}`,
+                        "\x1b[0m"
+                    );
 
                         
                     }catch(error){

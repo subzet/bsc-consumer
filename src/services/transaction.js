@@ -47,6 +47,20 @@ class Transaction{
         return undefined
     }
 
+    getAddressIndexInPath(addr){
+        return this.addresses.indexOf(addr)
+    }
+
+    getAddressOcurrencesInPath(addr){
+        let count = 0
+        
+        this.addresses.forEach(address => {
+            if (address.toUpperCase() == addr.toUpperCase()) count += 1
+        })
+
+        return count
+    }
+
     getTransferedAmount(addr){
         try{
             const transfers = this.logs.filter((x) => x.name === "Transfer")

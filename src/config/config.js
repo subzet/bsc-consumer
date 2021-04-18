@@ -11,7 +11,9 @@ config.set('addresses',{
     WBNB: '0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c'
 })
 
-config.set('allowedTrx', ['swapExactTokensForTokens','swapTokensForExactTokens','swapExactETHForTokens','swapTokensForExactETH','swapExactTokensForETH','swapETHForExactTokens'])
+config.set('allowedTrx', ['swapExactTokensForTokens','swapTokensForExactTokens','swapExactETHForTokens','swapTokensForExactETH','swapExactTokensForETH','swapETHForExactTokens','swapExactETHForTokensSupportingFeeOnTransferTokens','swapExactTokensForETHSupportingFeeOnTransferTokens','swapExactTokensForTokensSupportingFeeOnTransferTokens'])
+
+
 
 
 module.exports = config;

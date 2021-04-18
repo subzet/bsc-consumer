@@ -24,6 +24,7 @@ const routerContract = new web3.eth.Contract(Router_ABI, config.get('routerContr
 
 const tokens = []
 
+
 const getTokenContract = async (contractAddress) => {
     const contract = new web3.eth.Contract(BEP20_ABI, contractAddress);
 
@@ -44,11 +45,28 @@ const checkSwapTx = (fn) => {
     return config.get('allowedTrx').indexOf(fn) >= 0
   } 
 
+const getPairInvolved = (tokenAddressIndex,bnbAddressIndex,busdAddressIndex) => {               
+    if(tokenAddressIndex - bnbAddressIndex === 1 || bnbAddressIndex - tokenAddressIndex === 1)
+        return 'WBNB'
+    if(tokenAddressIndex - busdAddressIndex === 1 || busdAddressIndex - tokenAddressIndex === 1)
+        return 'BUSD'
+
+    return undefined
+}
+
 const trackSwaps = async (tokenAddress) => {
     try{
         const contract = await getTokenContract(tokenAddress)
         const token = await new Token(contract,routerContract,config.get('addresses')['BUSD'])
         tokens.push(token)
+
+        const busdContract = await getTokenContract(config.get('addresses')['BUSD'])
+        const busdToken = await new Token(busdContract,routerContract,config.get('addresses')['BUSD'])
+        tokens.push(busdToken)
+
+        const wbnbContract = await getTokenContract(config.get('addresses')['WBNB'])
+        const wbnbToken = await new Token(wbnbContract,routerContract,config.get('addresses')['BUSD'])
+        tokens.push(wbnbToken)
 
         contract.events
         .Transfer({})
@@ -57,35 +75,47 @@ const trackSwaps = async (tokenAddress) => {
         })
         .on("data", async function (event) {
             const tx = await web3.eth.getTransaction(event.transactionHash);
-            const receipt = await web3.eth.getTransactionReceipt(event.transactionHash);
-            if(tx.to.toUpperCase() === routerContract._address.toUpperCase()){
+            
+            if(tx.to && tx.to.toUpperCase() === routerContract._address.toUpperCase()){
                 console.log(`Router transaction`)
-                const transaction = new Transaction(tx,receipt)
+                const receipt = await web3.eth.getTransactionReceipt(event.transactionHash);
                 
+                const transaction = new Transaction(tx,receipt)
+            
                 if(!checkSwapTx(transaction.callFunction.name)){
                     //Not a transaction we want
                     return
                 }
-
-                const buy = transaction.getAddressTo().toUpperCase() === tokenAddress.toUpperCase() //Indicates if it's a buy swap for token we are tracking.
                 
-                let token = buy ? getTokenByAddress(transaction.getAddressFrom()) : getTokenByAddress(transaction.getAddressTo())
-
-                if(!token){
-                    //Add token if we do not have it in our list.
-                    const contract = buy ? await getTokenContract(transaction.getAddressFrom()) : await getTokenContract(transaction.getAddressTo()) 
-                    token = await new Token(contract,routerContract,config.get('addresses')['BUSD'])
-                    tokens.push(token)
+                //Search index in path for addresses we want 
+                const tokenAddressIndex = transaction.getAddressIndexInPath(tokenAddress)
+                const bnbAddressIndex = transaction.getAddressIndexInPath(config.get('addresses')['WBNB'])
+                const busdAddressIndex = transaction.getAddressIndexInPath(config.get('addresses')['BUSD'])
+                
+                //Resolve which pair is involved in the trasaction // BUY: BUSDCAKE, BNBCAKE SELL: CAKEBUSD, CAKEBNB
+                const pair = getPairInvolved(tokenAddressIndex,bnbAddressIndex,busdAddressIndex)
+                if(!pair){
+                    //Not a transaction involving these pairs BUY: BUSDCAKE, BNBCAKE SELL: CAKEBUSD, CAKEBNB
+                    return
                 }
 
+
+                //Consider a buy if our token desired is positioned after addresses we use as reference
+                const buy = bnbAddressIndex < tokenAddressIndex || busdAddressIndex < tokenAddressIndex
+
                 
-                    const color = buy ? "\x1b[32m" : "\x1b[31m"
-                    const label = buy ? "BUY" : "SELL"
+
+                //Print Transaction
+                const color = buy ? "\x1b[32m" : "\x1b[31m"
+                const label = buy ? "BUY" : "SELL"
                 
-                    const amountFrom = transaction.getTransferedAmount(transaction.getAddressFrom())
-                    const amountTo = transaction.getTransferedAmount(transaction.getAddressTo())
-                    const tokenFrom = buy ? token : getTokenByAddress(tokenAddress)
-                    const tokenTo = buy ? getTokenByAddress(tokenAddress) : token
+                //Get amounts involved in transaction.
+                const amountFrom = buy ? transaction.getTransferedAmount(config.get('addresses')[pair]) : transaction.getTransferedAmount(tokenAddress)
+                const amountTo = buy ? transaction.getTransferedAmount(tokenAddress) : transaction.getTransferedAmount(config.get('addresses')[pair])
+                
+                //Get tokens involved 
+                const tokenFrom = buy ? getTokenByAddress(config.get('addresses')[pair]) : getTokenByAddress(tokenAddress)
+                const tokenTo = buy ? getTokenByAddress(tokenAddress) : getTokenByAddress(config.get('addresses')[pair])
                 
                     try{
                         const tokenFromPrice = buy ? await tokenFrom.getPrice() : undefined

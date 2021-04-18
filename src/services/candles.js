@@ -1,4 +1,4 @@
-
+const moment = require('moment')
 
 class Candle{
     constructor(start,timeframe,open,token,reference){
@@ -25,4 +25,8 @@ class Candle{
         }
     }
 
+    setClose(price){
+        this.end = moment().format()
+        this.close = price
+    }
 }

@@ -30,11 +30,12 @@ class Candle{
 
     printCandle(){
         console.log(
-            `TOKEN ${this.token}`,
-            `OPEN ${this.open}`,
-            `HIGH ${this.high}`,
-            `LOW ${this.low}`,
-            `CLOSE ${this.close}`
+            `TOKEN ${this.token} |`,
+            `TIMESTAMP ${this.start} |`,
+            `OPEN ${this.open} |`,
+            `HIGH ${this.high} |`,
+            `LOW ${this.low} |`,
+            `CLOSE ${this.close} |`
         )
     }
 }

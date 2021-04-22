@@ -1,16 +1,13 @@
 const moment = require('moment')
 
 class Candle{
-    constructor(start,timeframe,open,token, amount,reference){
+    constructor(start,timeframe,open,token){
         this.start = start //Candle Start Time (UTC)
         this.end = undefined
         this.timeframe = timeframe //Candle Time Span
         this.open = open // Open Candle Price
         this.token = token // Main Token
-        this.reference = reference // Reference Token (Ex. BUSD)
-        this.volume = amount //Amount in native tokens
-        this.referencevolume = //Amount in reference token
-        this.close = undefined
+        this.close = open
         this.low = open 
         this.high = open 
     }
@@ -28,7 +25,18 @@ class Candle{
     }
 
     setClose(price){
-        this.end = moment().format()
         this.close = price
     }
+
+    printCandle(){
+        console.log(
+            `TOKEN ${this.token}`,
+            `OPEN ${this.open}`,
+            `HIGH ${this.high}`,
+            `LOW ${this.low}`,
+            `CLOSE ${this.close}`
+        )
+    }
 }
+
+module.exports = Candle

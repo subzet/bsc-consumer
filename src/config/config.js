@@ -13,8 +13,5 @@ config.set('addresses',{
 
 config.set('allowedTrx', ['swapExactTokensForTokens','swapTokensForExactTokens','swapExactETHForTokens','swapTokensForExactETH','swapExactTokensForETH','swapETHForExactTokens','swapExactETHForTokensSupportingFeeOnTransferTokens','swapExactTokensForETHSupportingFeeOnTransferTokens','swapExactTokensForTokensSupportingFeeOnTransferTokens'])
 
-
-
-
 module.exports = config;
 

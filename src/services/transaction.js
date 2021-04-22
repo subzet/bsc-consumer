@@ -48,7 +48,17 @@ class Transaction{
     }
 
     getAddressIndexInPath(addr){
-        return this.addresses.indexOf(addr)
+        for(let i = 0; i < this.addresses.length; i++){
+            if(addr.toUpperCase() === this.addresses[i].toUpperCase()){
+                return i
+            }
+        }
+
+        return -1
+    }
+
+    getAddressInIndex(index){
+        return this.addresses[index]
     }
 
     getAddressOcurrencesInPath(addr){

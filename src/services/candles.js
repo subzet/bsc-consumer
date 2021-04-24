@@ -1,43 +1,49 @@
 const moment = require('moment')
+const Candle = require('../domain/candle')
+const Candles = require('../models').candles
+const emitter = require('../utils/emitter')
+const timespan = 60 //60 seconds
+const candles = []
 
-class Candle{
-    constructor(start,timeframe,open,token){
-        this.start = start //Candle Start Time (UTC)
-        this.end = undefined
-        this.timeframe = timeframe //Candle Time Span
-        this.open = open // Open Candle Price
-        this.token = token // Main Token
-        this.close = open
-        this.low = open 
-        this.high = open 
-    }
-
-    setLow(price){
-        if(price < this.low){
-            this.low = price
-        }
-    }
-
-    setHigh(price){
-        if(price > this.high){
-            this.high = price
-        }
-    }
-
-    setClose(price){
-        this.close = price
-    }
-
-    printCandle(){
-        console.log(
-            `TOKEN ${this.token} |`,
-            `TIMESTAMP ${this.start} |`,
-            `OPEN ${this.open} |`,
-            `HIGH ${this.high} |`,
-            `LOW ${this.low} |`,
-            `CLOSE ${this.close} |`
-        )
-    }
+const createCandle = () => {
+    const candle = new Candle(moment().utc(),timespan)
+    candles.unshift(candle) //Add's element to first position in array.
 }
 
-module.exports = Candle
+const closeCandle = () => {
+    candles[0].closeCandle()
+}
+
+const updateCandleData = (operation) => {
+    const currentCandle = candles[0]
+    currentCandle.addCandleData(operation)    
+}
+
+const trackOperations = () => {
+    console.log("Waiting for operations...")
+    emitter.on("operation", async(operation) => {
+        operation.printOperation()
+        updateCandleData(operation)
+    })
+}
+
+const getCandles = async (pair) => {
+    const candles = await Candles.find().exec()
+    return candles.map(candle => {
+        return {
+            close: candle.data[0].close,
+            high: candle.data[0].high,
+            low: candle.data[0].low,
+            open: candle.data[0].open,
+            operations: candle.data[0].operations,
+            volume: candle.data[0].volume,
+            volumeUSD: candle.data[0].volumeUSD,
+            symbol: candle.data[0].symbol,
+            start: candle.start,
+            end: candle.end
+        }
+    })
+}
+
+
+module.exports = { trackOperations, createCandle, closeCandle, getCandles }

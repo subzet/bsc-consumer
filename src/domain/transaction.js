@@ -1,5 +1,4 @@
 const abiDecoder = require("abi-decoder");
-
 const BEP20_ABI = require("../config/BEP20_ABI.json");
 const Router_ABI = require("../config/Router_ABI.json");
 const Web3 = require('web3')
@@ -18,8 +17,23 @@ class Transaction{
         this.receipt = receipt
         this.callFunction = abiDecoder.decodeMethod(transaction.input)
         this.logs = abiDecoder.decodeLogs(receipt.logs)
-        this.addresses = this._getAddressesInvolved()
+        this.addresses = this._getAddressesInvolved() 
     }
+
+    async _getBlock(blockNumber, retry = 0){
+        if(retry > 10){
+            return null
+        }
+
+        let block = await web3.eth.getBlock(blockNumber)
+
+        if(!block){
+            block = await this._getBlock(blockNumber, retry + 1)
+        } 
+
+        return block
+    }
+
 
     _getAddressesInvolved(){
         const path = this.callFunction ? this.callFunction.params.filter(param => param.name == 'path') : undefined
@@ -29,6 +43,16 @@ class Transaction{
         }
 
         return undefined
+    }
+
+    async getTimestamp(){
+        const block = await this._getBlock(this.transaction.blockNumber)
+        
+        if(!block){
+            return null    
+        }
+
+        return new Date(block.timestamp * 1000)
     }
 
     getAddressTo(){

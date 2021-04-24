@@ -13,5 +13,7 @@ config.set('addresses',{
 
 config.set('allowedTrx', ['swapExactTokensForTokens','swapTokensForExactTokens','swapExactETHForTokens','swapTokensForExactETH','swapExactTokensForETH','swapETHForExactTokens','swapExactETHForTokensSupportingFeeOnTransferTokens','swapExactTokensForETHSupportingFeeOnTransferTokens','swapExactTokensForTokensSupportingFeeOnTransferTokens'])
 
+config.set('MONGO_DB_URI', process.env.MONGO_URI)
+
 module.exports = config;
 

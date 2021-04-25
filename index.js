@@ -1,6 +1,6 @@
-const trackerService = require('./src/services/tracker')
 const candleService = require('./src/services/candles')
 const candleHandler = require('./src/handlers/candles')
+const trackerHandler = require('./src/handlers/tracker')
 const db = require('./src/models')
 const express = require('express')
 const app = express();
@@ -12,10 +12,8 @@ startApp = async() => {
         useUnifiedTopology: true,
     });
     console.log("Conected to DB");
-    candleService.createCandle() //Creates first candle.
-    candleService.trackOperations()
-    trackerService.trackSwaps('0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82')
-
+    candleService.createCandle() //Starts creating candles.
+    candleService.trackOperations() //Starts listening for operations from router tracker.
     await setInterval(async () => {
         console.log("Closing and creating new candle")
         candleService.closeCandle()
@@ -32,7 +30,14 @@ app.get('/ping', (req,res) =>{
 }) 
 
 app.get('/bsc/:pair/candlesticks', async function(req,res){
+    /* Get candles for a given pair */
     const response = await candleHandler.getCandles(req.params.pair, req.query.timeframe)
+    res.status(response.code).send(response)
+});
+
+app.post('/bsc/:token/track', async function(req,res){
+    /* Post a token to start tracking*/
+    const response = await trackerHandler.startTracking(req.params.token)
     res.status(response.code).send(response)
 });
 

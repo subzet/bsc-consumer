@@ -32,6 +32,8 @@ const addToken = async (addr,router) =>  {
         token = await new Token(contract,router,config.get('addresses')['BUSD'])
         tokens.push(token)
     }
+
+    return token
 }
 
 const trackSwaps = async (tokenAddress) => {
@@ -39,43 +41,49 @@ const trackSwaps = async (tokenAddress) => {
     const functions = config.get('allowedTrx')
     const tracker = new RouterTracker(routerAddress,tokenAddress,functions)
 
-    await addToken(tokenAddress,tracker.router)
+    const token = await addToken(tokenAddress,tracker.router)
     
     tracker.track()
 
     emitter.on('transaction', async function (transaction){
-        //Timestamp
-        const timestamp = await transaction.getTimestamp()
-        //Operations list
-        const operations = []
-        //Index of token track in transaction path
-        const tokenIndex = transaction.getAddressIndexInPath(tokenAddress)
-        //Address of the token sold for token tracked
-        const soldAddress = tokenIndex > 0 ? transaction.getAddressInIndex(tokenIndex - 1) : undefined
-        //Address of the token bought with tocken tracked  
-        const boughtAddress = tokenIndex < transaction.addresses.length - 1 ? transaction.getAddressInIndex(tokenIndex + 1) : undefined 
+        try{
+            //Timestamp
+            const timestamp = await transaction.getTimestamp()
+            //Operations list
+            const operations = []
+            //Index of token track in transaction path
+            const tokenIndex = transaction.getAddressIndexInPath(tokenAddress)
+            //Address of the token sold for token tracked
+            const soldAddress = tokenIndex > 0 ? transaction.getAddressInIndex(tokenIndex - 1) : undefined
+            //Address of the token bought with tocken tracked  
+            const boughtAddress = tokenIndex < transaction.addresses.length - 1 ? transaction.getAddressInIndex(tokenIndex + 1) : undefined 
 
-        const tokenTracked = getTokenByAddress(tokenAddress)
+            const tokenTracked = getTokenByAddress(tokenAddress)
 
-        if(soldAddress){
-            //With x sold adrress someone bougth x token tracked
-            await addToken(soldAddress,tracker.router)
-            const operation = await new Operation(true,getTokenByAddress(soldAddress),tokenTracked,transaction,tokenTracked.symbol, timestamp.toUTCString())
-            operations.push(operation)
+            if(soldAddress){
+                //With x sold adrress someone bougth x token tracked
+                await addToken(soldAddress,tracker.router)
+                const operation = await new Operation(true,getTokenByAddress(soldAddress),tokenTracked,transaction,tokenTracked.symbol, timestamp.toUTCString())
+                operations.push(operation)
+            }
+
+            if(boughtAddress){
+                //With x token tracked someone bougth boughtAddress
+                await addToken(boughtAddress,tracker.router)
+                const operation = await new Operation(false,tokenTracked,getTokenByAddress(boughtAddress),transaction,tokenTracked.symbol, timestamp.toUTCString())
+                operations.push(operation)
+            }
+
+            await operations.forEach(async (operation) => {
+                await operation.save()
+                emitter.emit("operation", operation) // Emit the operation for candle creator to track it.
+            });
+        }catch(error){
+            console.log(`Error processing transaction ${error.message}`)
         }
-
-        if(boughtAddress){
-            //With x token tracked someone bougth boughtAddress
-            await addToken(boughtAddress,tracker.router)
-            const operation = await new Operation(false,tokenTracked,getTokenByAddress(boughtAddress),transaction,tokenTracked.symbol, timestamp.toUTCString())
-            operations.push(operation)
-        }
-
-        await operations.forEach(async (operation) => {
-            await operation.save()
-            emitter.emit("operation", operation) // Emit the operation for candle creator to track it.
-        });
     });
+
+    return token
 }
 
 
